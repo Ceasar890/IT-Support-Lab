@@ -1,0 +1,70 @@
+IT Support Lab — Network Troubleshooting
+
+Incident
+
+A Windows 10 client was unable to communicate with a Windows Server machine (DC01). Ping requests between the two systems initially timed out.
+
+Environment
+
+* Windows 10 Client: 192.168.184.136
+* Windows Server DC01: 192.168.184.134
+* Subnet Mask: 255.255.255.0
+* Default Gateway: 192.168.184.2
+* Virtualization Platform: VMware Workstation
+* Network Mode: NAT
+
+Investigation
+
+The following troubleshooting steps were performed:
+
+1. Verified IP configuration on both systems.
+2. Confirmed both systems were connected to the same VMware NAT network.
+3. Tested connectivity from Windows 10 to the VMware gateway.
+4. Tested connectivity between Windows 10 and DC01 in both directions.
+5. Checked Windows Firewall profiles and ICMP Echo Request rules.
+6. Verified ARP/network resolution during troubleshooting.
+7. Re-enabled the Windows Firewall Echo Request rules on DC01.
+8. Restarted the virtual machines to stabilize the network connection.
+9. Performed final connectivity tests in both directions.
+
+Root Cause
+
+The initial communication failure was associated with ICMP Echo Request traffic being blocked/not properly active on the Windows Firewall configuration.
+
+After re-enabling the appropriate Echo Request rules and restarting the virtual machines, communication between the systems was successfully restored.
+
+Resolution
+
+The Windows Firewall Echo Request rules were enabled and the virtual machines were restarted.
+
+Verification
+
+Final connectivity tests were successful:
+
+* Windows 10 → DC01: 4 sent, 4 received
+* DC01 → Windows 10: 4 sent, 4 received
+
+Evidence
+
+Screenshots documenting the investigation and successful resolution are located in the Evidence folder.
+
+Evidence Included
+
+* Windows 10 → DC01 successful ping
+* Windows 10 IP configuration
+* Windows Firewall/ICMP investigation
+* DC01 IP configuration
+* DC01 → Windows 10 successful ping
+
+Skills Demonstrated
+
+* Network troubleshooting
+* TCP/IP fundamentals
+* Windows administration
+* PowerShell
+* Firewall troubleshooting
+* Connectivity testing
+* Root-cause analysis
+* Technical documentation
+* Problem solving
+* Troubleshooting methodology
