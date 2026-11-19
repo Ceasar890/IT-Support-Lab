@@ -32,7 +32,7 @@ This lab walks through setting up and administering a **Kali Linux 2026.3** virt
 
 ## Walkthrough & Evidence
 
-### 1. System Information & Initial Network Check
+### 01_System_Info_and_Initial_Network.png.png
 Checked the OS release, hostname, kernel version, active user, and initial network state.
 
 ```bash
