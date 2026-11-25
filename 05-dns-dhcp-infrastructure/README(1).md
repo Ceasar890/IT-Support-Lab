@@ -1,126 +1,137 @@
-# Active Directory DNS & DHCP Configuration Lab
+# Active Directory DNS & DHCP Infrastructure Lab
 
-A hands-on Windows Server networking lab focused on configuring and verifying **DNS and DHCP services** in an Active Directory environment.
+A practical Windows Server networking lab focused on deploying, configuring, and validating **DNS and DHCP services** inside an Active Directory domain (`corp.local`). All services were built on a Windows Server 2019 Domain Controller (`DC01.corp.local`) and tested across both **Windows 10** and **Kali Linux** clients to confirm cross-platform name resolution and IP lease management.
 
-The lab was built around a Windows Server Domain Controller (`DC01.corp.local`) and verified from both a **Windows 10 client** and a **Kali Linux client**.
+---
 
-## Lab Environment
+## Lab Architecture & Environment
 
-| Component | Role / Details |
-|---|---|
-| **Windows Server (`DC01.corp.local`)** | Primary Domain Controller, DNS Server, and DHCP Server (`192.168.184.134`) |
-| **Windows 10 (`DESKTOP-IBEB2I4`)** | DHCP client and Windows verification client (`192.168.184.151`) |
-| **Kali Linux** | Independent Linux DNS verification client |
+| Component | Role / Network Details |
+| :--- | :--- |
+| **Windows Server 2019 (`DC01.corp.local`)** | Primary Domain Controller, DNS Server, and DHCP Server (`192.168.184.134`) |
+| **Windows 10 (`DESKTOP-IBEB2I4`)** | Domain-joined DHCP client and Windows verification workstation (`192.168.184.151`) |
+| **Kali Linux (`kali`)** | Independent Linux client for cross-platform DNS query verification |
 | **Active Directory Domain** | `corp.local` |
-| **Virtualization Platform** | VMware Workstation |
+| **Subnet & Gateway** | `192.168.184.0/24` (Default Gateway: `192.168.184.2`) |
+| **Hypervisor** | VMware Workstation |
+
+---
 
 ## DNS Configuration & Verification
 
-### 1. DNS Forward Lookup — A Record
+### 1. Forward Lookup Zone — Host (A) Record
+Configured a static Host (A) record inside the `corp.local` forward lookup zone so internal clients can reach the file server by hostname instead of an IP address.
 
-**Purpose:** Configure DNS name resolution for a file server so clients can locate it by hostname rather than relying solely on an IP address.
+* **Record:** `Fileserver.corp.local` → `192.168.184.134`
 
-- **Configuration:** `Fileserver.corp.local` → `192.168.184.134`
+![DNS Host A Record Created](01_dns_record_created.png)
 
-**Result:** The static Fileserver Host (A) record was successfully created in the `corp.local` forward lookup zone.
+---
 
-### 2. DNS CNAME Alias
+### 2. Alias (CNAME) Record
+Added a Canonical Name (CNAME) alias pointing to the file server's primary hostname to give users a simpler, service-oriented share name.
 
-**Purpose:** Create an easy-to-remember DNS alias that points to the existing Fileserver hostname.
+* **Alias:** `FileShare.corp.local` → `Fileserver.corp.local`
 
-- **Configuration:** `FileShare.corp.local` → `Fileserver.corp.local`
+![DNS CNAME Alias Created](02_Cname_alias_created.png)
 
-**Result:** The FileShare Alias (CNAME) record was successfully configured to resolve to `Fileserver.corp.local`.
+---
 
-### 3. Reverse DNS Lookup Verification
+### 3. Reverse DNS Lookup Verification (`nslookup`)
+Tested reverse name resolution from the Domain Controller command line to verify that querying the server's IPv4 address returns its registered hostname.
 
-**Purpose:** Verify that DNS can perform reverse name resolution by resolving an IP address back to its hostname.
-
-```bash
+```cmd
 nslookup 192.168.184.134
 ```
 
-**Result:** The IP address `192.168.184.134` successfully resolves back to `Fileserver.corp.local`.
+* **Outcome:** `192.168.184.134` resolved cleanly back to `Fileserver.corp.local`.
 
-### 4. Reverse Lookup Zone & PTR Records
+![Reverse DNS Lookup Verification](03-reverse-dns-ptr-nslookup.png)
 
-**Purpose:** Configure a reverse lookup zone so IPv4 addresses on the subnet map to their corresponding hostnames.
+---
 
-- **Reverse Zone:** `184.168.192.in-addr.arpa`
-- **PTR Records Verified:**
-  - `192.168.184.134` → `DC01.corp.local`
-  - `192.168.184.151` → `DESKTOP-IBEB2I4.corp.local`
+### 4. Reverse Lookup Zone & Pointer (PTR) Records
+Built the IPv4 reverse lookup zone for the `192.168.184.0/24` subnet and verified active Pointer (PTR) records for the Domain Controller and Windows 10 workstation.
 
-**Result:** The reverse lookup zone and Pointer (PTR) records are active and resolving hosts on the lab subnet.
+* **Reverse Zone:** `184.168.192.in-addr.arpa`
+* **PTR Records:**
+  * `192.168.184.134` → `DC01.corp.local.`
+  * `192.168.184.151` → `DESKTOP-IBEB2I4.corp.local.`
 
-### 5. DNS Verification from Kali Linux
+![Reverse Lookup Zone and PTR Records](04_reverse-lookup-created.png)
 
-**Purpose:** Verify cross-platform DNS resolution from an independent Linux client rather than relying only on local Windows Server tests.
+---
+
+### 5. Cross-Platform DNS Verification from Kali Linux (`dig`)
+Queried `DC01` directly from an external Kali Linux machine using `dig` to confirm that non-Windows hosts receive valid, authoritative answers from the internal DNS server.
 
 ```bash
 dig @192.168.184.134 Fileserver.corp.local
 ```
 
-**Result:** The query returned an authoritative (`aa`) response with a `NOERROR` status, confirming `Fileserver.corp.local` resolves to `192.168.184.134`.
+* **Outcome:** Returned `status: NOERROR` with the authoritative answer flag (`aa`) set, resolving `Fileserver.corp.local` to `192.168.184.134`.
+
+![Kali Linux DNS Verification](05_kali-dns-verification.png)
+
+---
 
 ## DHCP Configuration & Verification
 
-### 6. DHCP IPv4 Scope
+### 6. DHCP IPv4 Scope (`Corp-LAN`)
+Created and activated an IPv4 DHCP scope on `DC01` to automate address assignment and distribute gateway and DNS settings across the subnet.
 
-**Purpose:** Configure a DHCP scope to dynamically assign IPv4 addresses and network settings to clients on the lab network.
+* **Scope Name:** `Corp-LAN` (`192.168.184.0`)
+* **Address Pool:** `192.168.184.150 – 192.168.184.200`
 
-- **Scope Name:** `Corp-LAN`
-- **Network ID:** `192.168.184.0/24`
-- **Address Pool:** `192.168.184.150 – 192.168.184.200`
+![DHCP Scope Address Pool](06-dhcp-scope.png)
 
-**Result:** The `Corp-LAN` IPv4 DHCP scope was configured and activated on `dc01.corp.local`.
+---
 
 ### 7. DHCP Client Reservation
+Configured a static DHCP reservation inside the `Corp-LAN` scope so a designated workstation consistently receives the same IPv4 address while still pulling DNS and gateway options dynamically.
 
-**Purpose:** Reserve a dedicated IP address for a specific workstation while still managing its network configuration centrally through DHCP.
+* **Reservation Name:** `Windows10-Client`
+* **Reserved IP:** `192.168.184.150`
 
-- **Client Name:** `Windows10-Client`
-- **Reserved IP:** `192.168.184.150`
+![DHCP Client Reservation](07-dhcp-reservation.png)
 
-**Result:** A DHCP reservation for `192.168.184.150` was created under the `Corp-LAN` scope.
+---
 
-### 8. DHCP Client Renewal & Configuration Verification
-
-**Purpose:** Verify that the Windows 10 client (`DESKTOP-IBEB2I4`) communicates with the DHCP server and leases the expected network configuration.
+### 8. Client Lease Renewal & Network Verification (`ipconfig`)
+Forced a DHCP lease renewal on the Windows 10 client (`DESKTOP-IBEB2I4`) and inspected its full TCP/IP adapter configuration to confirm end-to-end delivery of scope options.
 
 ```cmd
 ipconfig /renew
 ipconfig /all
 ```
 
-- **IPv4 Address:** `192.168.184.151`
-- **Default Gateway:** `192.168.184.2`
-- **DHCP & DNS Server:** `192.168.184.134`
+* **Assigned IPv4 Address:** `192.168.184.151` (Subnet Mask: `255.255.255.0`)
+* **Default Gateway:** `192.168.184.2`
+* **DHCP & DNS Server:** `192.168.184.134`
+* **DNS Suffix:** `corp.local`
 
-**Result:** The Windows 10 client successfully renewed its DHCP lease and received the proper gateway and DNS server options.
+![DHCP Client Renewal Confirmation](08-dhcp-renewal-confirmation.png)
+
+---
 
 ## Verification Summary
 
-| Service | Verification Outcome |
-|---|---|
-| **DNS A Record** | `Fileserver.corp.local` resolves to `192.168.184.134` |
-| **DNS CNAME** | `FileShare.corp.local` resolves to `Fileserver.corp.local` |
-| **Reverse DNS** | `nslookup` resolves `192.168.184.134` back to hostname |
-| **PTR Records** | `184.168.192.in-addr.arpa` zone populated with host PTR records |
-| **Kali Linux DNS** | `dig` confirmed authoritative `NOERROR` resolution from Linux |
-| **DHCP Scope** | `Corp-LAN` (`192.168.184.150 – 200`) active on `DC01` |
-| **DHCP Reservation** | Static lease (`192.168.184.150`) configured in DHCP Manager |
-| **DHCP Client** | Windows 10 renewed lease (`192.168.184.151`) with DNS & Gateway |
+| Service / Test | Verified Outcome |
+| :--- | :--- |
+| **DNS Forward Lookup (A)** | `Fileserver.corp.local` resolves to `192.168.184.134` |
+| **DNS Alias (CNAME)** | `FileShare.corp.local` resolves to `Fileserver.corp.local` |
+| **Reverse DNS (`nslookup`)** | `192.168.184.134` resolves back to `Fileserver.corp.local` |
+| **Reverse Zone & PTRs** | `184.168.192.in-addr.arpa` active with PTRs for `DC01` and `DESKTOP-IBEB2I4` |
+| **Linux DNS Query (`dig`)** | Authoritative `NOERROR` response verified from Kali Linux |
+| **DHCP Scope (`Corp-LAN`)** | Active address pool (`192.168.184.150 – 192.168.184.200`) on `DC01` |
+| **DHCP Reservation** | Static reservation configured for `Windows10-Client` (`192.168.184.150`) |
+| **DHCP Client Lease** | `DESKTOP-IBEB2I4` leased `192.168.184.151` with proper DNS and gateway options |
 
-## Technologies & Tools Used
+---
 
-- **Operating Systems:** Windows Server 2019, Windows 10, Kali Linux
-- **Infrastructure Services:** Active Directory Domain Services (AD DS), DNS, DHCP
-- **Virtualization:** VMware Workstation
-- **CLI Verification Tools:** `nslookup`, `dig`, `ipconfig`
+## Skills & Tools Demonstrated
 
-## Project Objective & Outcome
-
-The objective of this lab was to gain practical experience deploying, managing, and troubleshooting core Windows Server network infrastructure services in a virtualized environment.
-
-By verifying configurations from both Windows 10 and Kali Linux, the lab demonstrates a functional, cross-platform enterprise network foundation with centralized DNS name resolution and automated DHCP IP management.
+* **Systems Administration:** Windows Server 2019, Active Directory Domain Services (AD DS), DNS Manager, DHCP Manager
+* **Networking & Protocols:** IPv4 Subnetting, Forward/Reverse DNS Zones (A, CNAME, NS, SOA, PTR), DHCP Scopes & Reservations
+* **Troubleshooting & Diagnostics:** `nslookup`, `dig`, `ipconfig`, cross-platform network validation (Windows 10 & Kali Linux)
+* **Virtualization:** VMware Workstation host-only/NAT lab networking
